@@ -26,7 +26,7 @@ const au=()=>{if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)
 const tone=(f,t,d,ty='sine',v=.15,f2)=>{const a=au();if(!a||MUTE)return;const o=a.createOscillator(),g=a.createGain(),s=a.currentTime+t;o.type=ty;o.frequency.setValueAtTime(f,s);if(f2)o.frequency.exponentialRampToValueAtTime(f2,s+d);g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(v,s+.01);g.gain.exponentialRampToValueAtTime(.0001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+.02)};
 const noise=(t,d,v=.2,fr=1800,ty='lowpass')=>{const a=au();if(!a||MUTE)return;const n=a.sampleRate*d|0,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*(1-i/n);const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();s.buffer=b;f.type=ty;f.frequency.value=fr;g.gain.value=v;s.connect(f);f.connect(g);g.connect(a.destination);s.start(a.currentTime+t)};
 const SFX={sel:()=>tone(660,0,.06,'triangle',.08),desel:()=>tone(440,0,.05,'triangle',.06),ui:()=>tone(520,0,.05,'sine',.07),draw:()=>{noise(0,.1,.14,2500,'highpass');tone(300,.02,.08,'sine',.05)},shuf:()=>{for(let i=0;i<5;i++)noise(i*.05,.06,.1,2500,'highpass')},play:()=>{noise(0,.18,.18,1200);tone(200,0,.15,'sine',.1,120)},hit:n=>{noise(0,.2+.05*n,.3,500+n*150);tone(150,0,.2+.06*n,'sawtooth',.18,45)},heal:()=>[523,659,784].forEach((f,i)=>tone(f,i*.09,.25,'sine',.12)),deb:()=>{tone(300,0,.5,'sawtooth',.12,90);tone(150,0,.5,'square',.06,60)},buff:()=>[784,988,1319].forEach((f,i)=>tone(f,i*.06,.2,'triangle',.1)),cancel:()=>tone(400,0,.25,'square',.1,120),time:()=>{for(let i=0;i<6;i++)tone(i%2?900:700,i*.07,.05,'square',.06)},turn:()=>{tone(880,0,.12,'sine',.1);tone(1175,.1,.2,'sine',.1)},win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.14,.4,'triangle',.15)),lose:()=>[392,330,262,196].forEach((f,i)=>tone(f,i*.2,.45,'sawtooth',.1))};
-const sfx=(k,a,r)=>{try{SFX[k]&&SFX[k](a)}catch(e){}if(!r&&MODE=='host'&&NET.dc&&!['ui','sel','desel','turn','win','lose'].includes(k))send({t:'sfx',k,a})};
+const sfx=(k,a,r)=>{try{SFX[k]&&SFX[k](a)}catch(e){}if(!r&&MODE=='host'&&NET.c&&!['ui','sel','desel','turn','win','lose'].includes(k))send({t:'sfx',k,a})};
 const sfxFor=(w,k)=>{if(MODE=='ai'){if(w=='p')sfx(k)}else if(w==V)sfx(k,0,1);else send({t:'sfx',k})};
 const fxs=(w,cs,b4,L)=>{const o=w=='p'?'a':'p',dmg=b4.hp[o]-S.hp[o],gn=S.hp[w]-b4.hp[w];let dl=0;const q=(k,a)=>{setTimeout(()=>sfx(k,a),dl);dl+=260};if(cs.some(c=>c.t=='time'))q('time');if(L.some(l=>l.startsWith('Buff membatalkan')))q('buff');if(L.some(l=>l.startsWith('Debuff menggagalkan')))q('cancel');if(dmg>0)q('hit',dmg);if(gn>0)q('heal');if(S.deb[o]&&!b4.deb[o])q('deb')};
 const mt=document.getElementById('mt'),mtu=()=>{mt.innerHTML=`<svg viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 5 6 9H2v6h4l5 4z'/>${MUTE?`<path d='m22 9-6 6M16 9l6 6'/>`:`<path d='M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14'/>`}</svg>`;mt.setAttribute('aria-label',MUTE?'Nyalakan suara':'Matikan suara')};mtu();mt.onclick=()=>{MUTE=!MUTE;try{localStorage.setItem('mute',MUTE?'1':'0')}catch(e){}mtu();if(!MUTE)sfx('ui')};
@@ -105,7 +105,7 @@ const side=w=>{const i=S.h[w],d=HD[i];return `<div class="side"><div class="hero
 function R(){
  const g=S,o=V=='p'?'a':'p',rv=g.rv[V]||[],ex=Math.max(0,g.hand[V].length-10),pc=[...g.hand[V]].sort((a,b)=>ORD.indexOf(a.t)-ORD.indexOf(b.t)||a.v-b.v),top=g.disc[g.disc.length-1];
  const msg=g.over?'':g.mode==V?`Tanganmu lebih dari 10 kartu. Klik kartu untuk membuang (${ex} lagi).`:g.mode?'Menunggu lawan membuang kartu...':g.turn==V&&!g.busy?'Giliranmu':g.turn==V?'Menyelesaikan kartu...':MODE=='ai'?'Bot sedang berpikir...':'Giliran lawan...';
- if(MODE=='host')bc();
+ if(MODE=='host'){bc();if(NET.code){if(!g.busy)NET.ss=JSON.stringify(g);saveSess()}}
  root.innerHTML=`<div id="g"><div class="board">
 <div class="sec">${side(o)}<div class="ohand">${g.hand[o].map(c=>rv.includes(c.id)?cd(c):`<div class="ac bk ${c.n?'deal':''}">${c.seen?'<u></u>':''}${ic('hour')}</div>`).join('')}<small>${g.hand[o].length} kartu tertutup</small></div></div>
 <div class="sec mid"><div class="piles"><div class="pile"><div class="ac bk">${ic('sword')}</div><span>Dek: ${g.deck.length}</span></div><div class="pile"><div class="ac dis" style="--c:${top?T[top.t][0]:'#4b5675'}">${top?`<b>${T[top.t][1]}</b>${top.v?`<em>${top.v*100}</em>`:''}`:''}</div><span>Discard: ${g.disc.length}</span></div><div class="pile"><div class="ac hpc"></div><span>Health Pool: ${g.pool}</span></div></div><div class="zone"><div class="zc">${g.zone.map(cd).join('')}</div><p id="msg">${msg}</p></div></div>
@@ -127,7 +127,6 @@ function pick(){
  S=null;root.innerHTML=`<h1>Pilih Hero</h1><p class='sub'>${MODE=='ai'?`<span class='chip' style='--c:${DN[DF][1]}'>${DN[DF][0]}</span> <button class='lnk' data-a='back'>ganti tingkat kesulitan</button><br>`:`<span class='chip' style='--c:#e23c86'>Player vs Player</span><br>`}Habiskan tumpukan Health Card lawan sampai 0. Tiap giliran kamu memainkan satu kartu (atau satu stack), lalu giliran berpindah. Kamu juga bisa mengambil kartu (maksimal 4 kali per giliran), tapi lawan otomatis mendapat jumlah yang sama. Pilih Hero-mu:</p><div class="pg">${HD.map((d,i)=>`<button class="hcd" data-h="${i}" style="--hu:${d[2]}"><div class="kind">Hero card</div><h3>${d[0]}</h3><div class="art">${SIL[i]}</div><div class="hpr"><div class="hpn">${d[1]*100}<small>HP</small><em>${d[1]} Health Card</em></div><div class="mini">${'<i></i>'.repeat(d[1])}</div></div><div class="fx"><b class="${i?'':'no'}">${d[3]}</b><p>${d[4]}</p></div></button>`).join('')}</div>`;
 }
 const nameOf=w=>w==V?'Kamu':MODE=='ai'?'Bot':'Lawan',tx=t=>t.replace(/\{([pa])\}/g,(m,w)=>nameOf(w));
-const send=m=>{try{NET.dc&&NET.dc.readyState=='open'&&NET.dc.send(JSON.stringify(m))}catch(e){}};
 function act(w,m){
  if(!S||S.over)return;
  if(m.k=='discard'){if(S.mode!=w)return;const h=S.hand[w],c=h.find(x=>x.id==m.id);if(!c)return;h.splice(h.indexOf(c),1);S.disc.push(c);lg(`${nm(w)} membuang ${nmc(c)}`,w);fix();R();return}
@@ -136,47 +135,117 @@ function act(w,m){
  if(m.k=='end'){if(w==V)S.sel=[];lg(`${nm(w)} mengakhiri giliran`,w);S.dc=0;S.turn=w=='p'?'a':'p';S.busy=MODE=='ai';if(MODE=='ai'){R();aiTurn()}else{lg('Giliran '+nm(S.turn));R();sfxFor(S.turn,'turn')}}
  if(m.k=='play'){const ids=m.ids||[],cs=ids.map(i=>S.hand[w].find(c=>c.id==i)).filter(Boolean);if(cs.length==ids.length&&val(cs))play(w,cs)}
 }
-/* Jaringan: WebRTC langsung antar perangkat, kode dipertukarkan manual lewat chat */
-const b64=u=>btoa(String.fromCharCode(...u)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const unb=t=>Uint8Array.from(atob(t.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
-const pipe=async(u,C)=>{const t=new C('deflate-raw'),w=t.writable.getWriter();w.write(u);w.close();return new Uint8Array(await new Response(t.readable).arrayBuffer())};
-const enc=async d=>{const u=new TextEncoder().encode(JSON.stringify(d));return window.CompressionStream?'Z'+b64(await pipe(u,CompressionStream)):'R'+b64(u)};
-const dec=async t=>{t=t.trim();let u=unb(t.slice(1));if(t[0]=='Z')u=await pipe(u,DecompressionStream);return JSON.parse(new TextDecoder().decode(u))};
-const mkpc=()=>{const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});pc.onconnectionstatechange=()=>{if(pc.connectionState=='failed'||pc.connectionState=='closed')lost()};return pc};
-const ice=pc=>new Promise(r=>{if(pc.iceGatheringState=='complete')return r();pc.onicegatheringstatechange=()=>pc.iceGatheringState=='complete'&&r();setTimeout(r,5000)});
-function chan(dc){NET.dc=dc;dc.onopen=()=>{sfx('turn');pickNet()};dc.onmessage=e=>{try{onmsg(JSON.parse(e.data))}catch(x){}};dc.onclose=lost}
-function netClose(){try{if(NET.dc)NET.dc.onclose=null;if(NET.pc)NET.pc.onconnectionstatechange=null;NET.dc&&NET.dc.close();NET.pc&&NET.pc.close()}catch(e){}for(const k in NET)delete NET[k]}
-function lost(){if(NET.bye||!NET.pc)return;NET.bye=1;if(S)S.busy=true;root.insertAdjacentHTML('beforeend',`<div class='ov'><div class='box'><h2>Koneksi terputus</h2><p>Temanmu keluar atau koneksi bermasalah.</p><button class='pri' data-a='menu'>Menu utama</button></div></div>`)}
-const lobHTML=(h,sub,body)=>`<h1>${h}</h1><p class='sub'>${sub}</p><div class='lob'>${body}<button class='lnk' data-a='menu'>batal</button></div>`;
-async function hostStart(){
- netClose();MODE='host';V='p';NET.pc=mkpc();chan(NET.pc.createDataChannel('g'));
- root.innerHTML=lobHTML('Buat ruangan','Membuat kode...','');
- await NET.pc.setLocalDescription(await NET.pc.createOffer());await ice(NET.pc);
- const code=await enc(NET.pc.localDescription);
- root.innerHTML=lobHTML('Buat ruangan','1. Kirim kode ini ke temanmu lewat chat. 2. Temanmu akan mengirim kode balasan, tempel di kotak bawah.',`<textarea id='code' readonly>${code}</textarea><button data-a='copy'>Salin kode</button><textarea id='ans' placeholder='Tempel kode balasan dari temanmu'></textarea><button class='pri' data-a='conn'>Sambungkan</button><p id='st'></p>`);
+/* Online: pesan dikirim lewat broker MQTT publik. Kode ruangan = 8 angka. */
+const BROKERS=window.DK_BROKERS||['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
+const TP=k=>'dk1/'+NET.code+'/'+k;
+const pub=(k,o,rt,q=1)=>{try{if(NET.c&&NET.c.connected)NET.c.publish(TP(k),typeof o=='string'?o:JSON.stringify(o),{retain:!!rt,qos:q})}catch(e){}};
+const send=m=>{if(m.t=='s')pub('snap',m.s,1);else if(m.t=='act')pub('act',m);else if(m.t=='sfx')pub('sfx',m,0,0);else if(m.t=='re')pub('re',{from:MODE})};
+const ls={get:k=>{try{return sessionStorage.getItem(k)||localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{sessionStorage.setItem(k,v);localStorage.setItem(k,v)}catch(e){}},del:k=>{try{sessionStorage.removeItem(k);localStorage.removeItem(k)}catch(e){}}};
+function saveSess(){if(NET.code)ls.set('dk_s',JSON.stringify({role:MODE,code:NET.code,gid:NET.gid,seat:NET.seat,phase:NET.phase,hh:NET.hh,gen:NET.gen,ss:MODE=='host'?NET.ss:null}))}
+function netBanner(){const e=$('#nb');if(!e)return;const t=NET.down?'Koneksi terputus. Menyambung ulang...':MODE=='guest'&&NET.joined&&NET.hostOff?'Host sedang offline. Menunggu host kembali...':MODE=='host'&&NET.seat&&NET.guestOff?'Temanmu sedang offline. Game lanjut saat ia kembali.':'';e.textContent=t;e.hidden=!t}
+function netClose(){const c=NET.c;if(c){try{c.removeAllListeners();c.end(true)}catch(e){}}for(const k in NET)delete NET[k];netBanner()}
+function leave(){const c=NET.c;if(c&&c.connected){const ks=MODE=='host'?['host','snap','hostlive','guest']:MODE=='guest'?['guest','guestlive']:[];ks.forEach(k=>c.publish(TP(k),'',{retain:true,qos:1}));try{c.removeAllListeners();c.end(false)}catch(e){}NET.c=null}ls.del('dk_s');netClose()}
+function netOpen(role,code,init,ready,fail){
+ netClose();Object.assign(NET,init||{},{role,code});const tok=NET.tok=Math.random(),id='dk'+Math.random().toString(16).slice(2,10);let i=0;
+ const topics=role=='host'?['guest','guestlive','act','re']:['host','hostlive','snap','sfx','re'];
+ const next=()=>{
+  if(NET.tok!==tok)return;
+  if(i>=BROKERS.length){fail&&fail();return}
+  const url=BROKERS[i++];let ok=0,c;
+  try{c=mqtt.connect(url,{clientId:id+i,connectTimeout:6000,reconnectPeriod:0,keepalive:20,will:{topic:TP(role+'live'),payload:'off',qos:1,retain:true}})}catch(e){return next()}
+  const tm=setTimeout(()=>{if(!ok){try{c.removeAllListeners();c.end(true)}catch(e){}next()}},7000);
+  c.on('error',()=>{});
+  c.on('connect',()=>{
+   if(NET.tok!==tok){try{c.end(true)}catch(e){}return}
+   clearTimeout(tm);NET.c=c;NET.down=0;c.options.reconnectPeriod=2000;
+   c.subscribe(topics.map(k=>TP(k)),{qos:1});
+   c.publish(TP(role+'live'),'on',{retain:true,qos:1});
+   if(!ok){ok=1;ready&&ready()}else{if(MODE=='host')bc();if(MODE=='guest'&&NET.joined)pubGuest()}
+   netBanner()});
+  c.on('close',()=>{if(!ok){clearTimeout(tm);next();return}NET.down=1;netBanner()});
+  c.on('message',(t,pl)=>onTopic(t.split('/')[2],pl.toString()));
+ };next();
 }
-async function hostConnect(){try{const d=await dec($('#ans').value);await NET.pc.setRemoteDescription(d);$('#st').textContent='Menyambungkan...'}catch(e){$('#st').textContent='Kode tidak valid. Pastikan seluruh kode tersalin.'}}
-function joinStart(){netClose();MODE='guest';V='a';root.innerHTML=lobHTML('Gabung ruangan','Tempel kode dari temanmu, lalu buat kode balasan.',`<textarea id='ans' placeholder='Tempel kode dari temanmu'></textarea><button class='pri' data-a='mkans'>Buat kode balasan</button><p id='st'></p>`)}
-async function joinAnswer(){try{const d=await dec($('#ans').value);NET.pc=mkpc();NET.pc.ondatachannel=e=>chan(e.channel);await NET.pc.setRemoteDescription(d);await NET.pc.setLocalDescription(await NET.pc.createAnswer());$('#st').textContent='Membuat kode...';await ice(NET.pc);const code=await enc(NET.pc.localDescription);root.innerHTML=lobHTML('Kirim kode balasan','Kirim kode ini ke temanmu. Game dimulai otomatis setelah temanmu menempelkannya dan menekan Sambungkan.',`<textarea id='code' readonly>${code}</textarea><button data-a='copy'>Salin kode</button><p>Menunggu tersambung...</p>`)}catch(e){$('#st').textContent='Kode tidak valid. Pastikan seluruh kode tersalin.'}}
+function onTopic(k,p){
+ let m=null;try{m=p?JSON.parse(p):null}catch(e){}
+ if(MODE=='guest'){
+  if(k=='host'){NET.hi=m;guestLobby()}
+  else if(k=='hostlive'){NET.hostOff=p!='on';netBanner()}
+  else if(k=='snap'&&m){NET.phase='play';NET.lph='play';recv(m)}
+  else if(k=='sfx'&&m)sfx(m.k,m.a,1)
+  else if(k=='re'&&m&&m.from=='host')rematch(0)
+ }else if(MODE=='host'){
+  if(k=='guest'){NET.gi=m;hostLobby()}
+  else if(k=='guestlive'){NET.guestOff=p!='on';netBanner()}
+  else if(k=='act'&&m)act('a',m)
+  else if(k=='re'&&m&&m.from=='guest')rematch(0)
+ }
+}
+const pubHost=()=>{pub('host',{phase:NET.phase,seat:NET.seat||null,hh:NET.hh??null,gen:NET.gen||0},1);saveSess()};
+const pubGuest=()=>{pub('guest',{gid:NET.gid,gh:NET.gh??null,ts:Date.now()},1);saveSess()};
+function lobbyScreen(){if(NET.phase=='wait')roomView();else if(NET.phase=='pick'){NET.hh==null?pick():waitScreen()}else if(!S)waitScreen()}
+function hostLobby(){
+ const gi=NET.gi;if(!gi||!gi.gid)return;
+ if(!NET.seat){NET.seat=gi.gid;NET.phase='pick';NET.hh=null;pubHost();lobbyScreen()}
+ if(NET.seat!=gi.gid)return;
+ const g0=NET.gh;NET.gh=gi.gh??null;
+ if(!S&&g0!==NET.gh)lobbyScreen();
+ tryStart();netBanner()
+}
+function tryStart(){if(NET.phase=='pick'&&NET.hh!=null&&NET.gh!=null){NET.phase='play';NET.gen=Date.now();init(NET.hh,NET.gh);pubHost()}}
+function guestLobby(){
+ const hi=NET.hi;if(!hi)return;clearTimeout(NET.t0);
+ if(hi.seat&&hi.seat!=NET.gid)return failG('Ruangan sudah penuh.');
+ if(!NET.joined){NET.joined=1;NET.gh=null;pubGuest()}
+ if(hi.phase==NET.lph)return;NET.lph=hi.phase;
+ if(hi.phase=='wait')roomView();
+ else if(hi.phase=='pick'){S=null;NET.gh==null?pick():waitScreen()}
+ else if(!S)waitScreen('Menunggu game dimulai...');
+ netBanner();saveSess()
+}
+function recv(n){const old=S;n.deck=new Array(n.deckN);n.disc=new Array(n.discN);if(n.discN)n.disc[n.discN-1]=n.discTop;n.sel=((old&&old.sel)||[]).filter(id=>n.hand.a.some(c=>c.id==id));S=n;R()}
 function bc(){
- if(!NET.dc||NET.dc.readyState!='open')return;
+ if(!NET.c||!NET.c.connected)return;
  const g=S,mask=c=>g.rv.a.includes(c.id)?c:{id:c.id,seen:c.seen,n:c.n};
  send({t:'s',s:{h:g.h,hp:g.hp,pool:g.pool,deb:g.deb,turn:g.turn,busy:g.busy,over:g.over,mode:g.mode,dc:g.dc,zone:g.zone,log:g.log.slice(-40),pv:g.pv,rv:g.rv,hand:{p:g.hand.p.map(mask),a:g.hand.a},deckN:g.deck.length,discN:g.disc.length,discTop:g.disc[g.disc.length-1]||null}});
 }
-function recv(n){const old=S;n.deck=new Array(n.deckN);n.disc=new Array(n.discN);if(n.discN)n.disc[n.discN-1]=n.discTop;n.sel=((old&&old.sel)||[]).filter(id=>n.hand.a.some(c=>c.id==id));S=n;R()}
-const waitScreen=()=>{S=null;root.innerHTML=`<h1>Menunggu lawan...</h1><p class='sub'>Lawanmu masih memilih Hero. Game dimulai otomatis.</p>`};
-const tryStart=()=>{if(NET.hh!=null&&NET.gh!=null)init(NET.hh,NET.gh)};
-function pickNet(){NET.hh=NET.gh=null;pick()}
-function onmsg(m){
- if(m.t=='hero'&&MODE=='host'){NET.gh=m.i;tryStart()}
- else if(m.t=='act'&&MODE=='host')act('a',m)
- else if(m.t=='s'&&MODE=='guest')recv(m.s)
- else if(m.t=='sfx')sfx(m.k,m.a,1)
- else if(m.t=='re'&&S)pickNet()
+function rematch(mine){
+ if(MODE=='ai')return levels();
+ if(mine)send({t:'re'});
+ S=null;NET.hh=NET.gh=null;NET.ss=null;
+ if(MODE=='host'){NET.phase='pick';pubHost();pub('snap','',1)}else{NET.lph='pick';pubGuest()}
+ pick()
 }
-function choose(i){if(MODE=='ai')return init(i);if(MODE=='host'){NET.hh=i;waitScreen();tryStart()}else{send({t:'hero',i});waitScreen()}}
-function menu(){netClose();S=null;MODE='ai';V='p';root.innerHTML=`<h1>Duel Kartu Strategi</h1><p class='sub'>Pilih mode permainan.</p><div class='pg'><button class='lv' data-m='ai' style='--c:#3b82f6'><h3>Player vs AI</h3><p>Lawan Bot. Kamu memilih tingkat kesulitan dulu, lalu Hero.</p></button><button class='lv' data-m='pvp' style='--c:#e23c86'><h3>Player vs Player</h3><p>Main bareng teman di dua perangkat. Tanpa akun, cukup tukar kode lewat chat.</p></button></div>`}
-function lobby(){netClose();S=null;MODE='host';V='p';root.innerHTML=`<h1>Player vs Player</h1><p class='sub'>Satu orang membuat ruangan, yang lain bergabung, lalu kalian bertukar kode lewat chat.</p><div class='pg'><button class='lv' data-a='host' style='--c:#3b82f6'><h3>Buat ruangan</h3><p>Kamu mendapat kode untuk dikirim ke temanmu.</p></button><button class='lv' data-a='join' style='--c:#22c55e'><h3>Gabung ruangan</h3><p>Tempel kode dari temanmu.</p></button></div><p class='sub'><button class='lnk' data-a='menu'>kembali ke menu</button></p>`}
+function choose(i){if(MODE=='ai')return init(i);if(MODE=='host'){NET.hh=i;pubHost();waitScreen();tryStart()}else{NET.gh=i;pubGuest();waitScreen()}}
+const waitScreen=m=>{S=null;root.innerHTML=`<h1>Menunggu lawan...</h1><p class='sub'>${m||'Lawanmu masih memilih Hero. Game dimulai otomatis.'}</p><div class='lob'><div class='rc'>${NET.code}</div><button class='lnk' data-a='menu'>keluar dari ruangan</button></div>`};
+function roomView(){
+ const h=MODE=='host',o=h?(NET.seat?(NET.guestOff?'offline':'sudah bergabung'):'menunggu...'):(NET.hostOff?'offline':'online'),okc=o=='menunggu...'||o=='offline'?'':'ok';
+ root.innerHTML=`<h1>Ruang Tunggu</h1><p class='sub'>${h?'Bagikan kode ini ke temanmu. Game lanjut otomatis begitu ia bergabung.':'Kamu sudah masuk. Menunggu host memulai.'}</p><div class='lob'><div class='rc'>${NET.code}</div><button data-a='copy'>Salin kode</button><ul class='pl'><li><b>Kamu (${h?'Host':'Tamu'})</b><i class='ok'>siap</i></li><li><b>Teman</b><i class='${okc}'>${o}</i></li></ul><button class='lnk' data-a='menu'>keluar dari ruangan</button></div>`}
+function createRoom(){
+ const code=Array.from(crypto.getRandomValues(new Uint32Array(8)),x=>x%10).join('');
+ MODE='host';V='p';S=null;root.innerHTML=`<h1>Membuat ruangan...</h1>`;
+ netOpen('host',code,{phase:'wait',gen:0},()=>{pubHost();roomView()},()=>{netClose();menu('Tidak bisa terhubung ke server perantara. Periksa internetmu. Mode online tidak jalan di pratinjau Claude, buka dari hosting sendiri (misalnya Vercel).')});
+}
+function joinScreen(err){S=null;root.innerHTML=`<h1>Gabung ruangan</h1><p class='sub'>Masukkan kode 8 angka dari temanmu.</p><div class='lob'><input id='cin' inputmode='numeric' maxlength='8' autocomplete='off' placeholder='00000000'><button class='pri' data-a='joingo'>Gabung</button><p id='st'>${err||''}</p><button class='lnk' data-a='menu'>kembali ke menu</button></div>`}
+const failG=m=>{netClose();ls.del('dk_s');joinScreen(m)};
+function joinRoom(code){
+ MODE='guest';V='a';S=null;root.innerHTML=`<h1>Menyambungkan...</h1><p class='sub'>Ruangan ${code}</p>`;
+ let g=ls.get('dk_gid');if(!g){g=Math.random().toString(36).slice(2,10);ls.set('dk_gid',g)}
+ netOpen('guest',code,{gid:g},()=>{NET.t0=setTimeout(()=>{if(!NET.hi)failG('Ruangan tidak ditemukan. Periksa kodenya.')},5000)},()=>failG('Tidak bisa terhubung ke server perantara. Periksa internetmu.'));
+}
+function boot(){
+ let s=null;try{s=JSON.parse(ls.get('dk_s')||'null')}catch(e){}
+ if(!s||!s.code||!window.mqtt)return menu();
+ MODE=s.role;V=MODE=='host'?'p':'a';S=null;
+ root.innerHTML=`<h1>Menyambungkan kembali...</h1><p class='sub'>Ruangan ${s.code}</p><div class='lob'><button class='lnk' data-a='menu'>batal dan keluar dari ruangan</button></div>`;
+ netOpen(MODE,s.code,{gid:s.gid,seat:s.seat,phase:s.phase,hh:s.hh,gen:s.gen},()=>{
+  if(MODE=='host'){NET.ss=s.ss;if(s.ss){S=JSON.parse(s.ss);S.busy=false;S.zone=[];S.rv={p:[],a:[]};S.sel=[];NET.phase='play';pubHost();R()}else{pubHost();lobbyScreen()}}
+  else{NET.joined=1;NET.gh=null;pubGuest();NET.t0=setTimeout(()=>{if(!NET.hi)failG('Ruangan sudah tidak ada.')},6000)}
+ },()=>{netClose();ls.del('dk_s');menu('Tidak bisa terhubung ke server perantara. Periksa internetmu.')});
+}
+document.addEventListener('visibilitychange',()=>{try{if(!document.hidden&&NET.c&&!NET.c.connected)NET.c.reconnect()}catch(e){}});
+function menu(msg){leave();S=null;MODE='ai';V='p';root.innerHTML=`<h1>Duel Kartu Strategi</h1><p class='sub'>Pilih mode permainan.</p>${msg?`<p class='sub' style='color:#f87171'>${msg}</p>`:''}<div class='pg'><button class='lv' data-m='ai' style='--c:#3b82f6'><h3>Player vs AI</h3><p>Lawan Bot. Kamu memilih tingkat kesulitan dulu, lalu Hero.</p></button><button class='lv' data-m='pvp' style='--c:#e23c86'><h3>Player vs Player</h3><p>Main bareng teman di dua perangkat. Buat ruangan, lalu bagikan kode 8 angkanya.</p></button></div>`}
+function lobby(){S=null;root.innerHTML=`<h1>Player vs Player</h1><p class='sub'>Satu orang membuat ruangan dan membagikan kode 8 angka, yang lain memasukkan kodenya.</p><div class='pg'><button class='lv' data-a='host' style='--c:#3b82f6'><h3>Buat ruangan</h3><p>Kamu mendapat kode untuk dikirim ke temanmu.</p></button><button class='lv' data-a='join' style='--c:#22c55e'><h3>Gabung ruangan</h3><p>Masukkan kode dari temanmu.</p></button></div><p class='sub'><button class='lnk' data-a='menu'>kembali ke menu</button></p>`}
 root.onclick=e=>{
  const mm=e.target.closest('[data-m]');if(mm){sfx('ui');if(mm.dataset.m=='ai'){MODE='ai';V='p';return levels()}return lobby()}
  const d=e.target.closest('[data-d]');if(d){sfx('ui');DF=+d.dataset.d;return pick()}
@@ -185,15 +254,16 @@ root.onclick=e=>{
  if(a&&!a.disabled){const k=a.dataset.a;
   if(k=='menu')return menu();
   if(k=='back')return levels();
-  if(k=='again'){if(MODE=='ai')return levels();send({t:'re'});return pickNet()}
-  if(k=='host')return hostStart();if(k=='join')return joinStart();
-  if(k=='conn')return hostConnect();if(k=='mkans')return joinAnswer();
-  if(k=='copy'){const t=$('#code');t.select();try{navigator.clipboard.writeText(t.value)}catch(x){try{document.execCommand('copy')}catch(y){}}a.textContent='Tersalin';return}
-  if(k=='draw'||k=='end'||k=='play'){if(k!='draw')sfx('ui');const m={k,ids:[...S.sel]};if(MODE=='guest'){send({t:'act',...m});S.sel=[];U()}else act(V,m)}
+  if(k=='again')return MODE=='ai'?levels():rematch(1);
+  if(k=='host')return createRoom();
+  if(k=='join')return joinScreen();
+  if(k=='joingo'){const c=$('#cin').value.replace(/\D/g,'');if(c.length!=8){$('#st').textContent='Kode harus 8 angka.';return}return joinRoom(c)}
+  if(k=='copy'){try{navigator.clipboard.writeText(NET.code)}catch(x){}a.textContent='Tersalin';return}
+  if(k=='draw'||k=='end'||k=='play'){if(k!='draw')sfx('ui');const m={k,ids:[...S.sel]};if(MODE=='guest'){if(NET.hostOff||NET.down)return;send({t:'act',...m});S.sel=[];U()}else act(V,m)}
   return}
  const c=e.target.closest('.hand .ac');if(!c||!S||S.over)return;const id=+c.dataset.id;
  if(S.mode==V){sfx('ui');return MODE=='guest'?send({t:'act',k:'discard',id}):act(V,{k:'discard',id})}
  if(S.turn!=V||S.busy||S.mode)return;
  const i=S.sel.indexOf(id);if(i>=0){S.sel.splice(i,1);sfx('desel')}else if(S.sel.length<3){S.sel.push(id);sfx('sel')}U();
 };
-menu();
+boot();
