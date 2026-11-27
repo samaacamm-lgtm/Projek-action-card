@@ -34,7 +34,8 @@ const DN=[['Easy','#22c55e','Bot sering memilih acak, kadang melewatkan giliran,
 const nm=w=>'{'+w+'}',nmc=c=>T[c.t][1]+(c.v?' '+c.v*100:''),lg=(t,w)=>{S.log.push([t,w]);if(S.log.length>70)S.log.shift()};
 const rank=c=>c.t=='atk'?10+c.v*3:c.t=='def'?8+c.v*2:c.t=='time'?9:c.t=='deb'?7:6;
 const key=c=>c.t+c.v,spread=a=>{shuf(a);for(let i=1;i<a.length;i++){const ok=c=>![1,2,3].some(d=>i-d>=0&&key(a[i-d])==key(c));if(!ok(a[i])){const j=a.findIndex((c,x)=>x>i&&ok(c));if(j>0){[a[i],a[j]]=[a[j],a[i]]}}}return a};
-const mk=()=>{let id=0,d=[];[['atk',1,12],['atk',2,10],['atk',3,5],['def',1,9],['def',2,6],['deb',0,7],['buff',0,7],['time',0,4]].forEach(([t,v,n])=>{for(let i=0;i<n;i++)d.push({id:++id,t,v})});return spread(d)};
+const DECK=[['atk',1,13],['atk',2,10],['atk',3,5],['def',1,10],['def',2,6],['deb',0,7],['buff',0,7],['time',0,2]];
+const mk=()=>{let id=0,d=[];DECK.forEach(([t,v,n])=>{for(let i=0;i<n;i++)d.push({id:++id,t,v})});return spread(d)};
 const val=cs=>{const n=cs.length,tm=cs.filter(c=>c.t=='time').length,bf=cs.filter(c=>c.t=='buff').length,mn=n-tm-bf;if(n==1)return mn==1;if(tm)return n==3&&tm==1&&bf<=1;if(bf)return n==2&&bf==1&&mn==1;return false};
 const hint=cs=>{if(!cs.length)return 'Pilih 1 kartu. Buff butuh 1 kartu pendamping, Time butuh 2.';if(val(cs))return 'Siap dimainkan.';if(cs.some(c=>c.t=='time'))return `Time wajib di-stack dengan 2 kartu lain (maks. 1 Buff). Terpilih ${cs.length-1} dari 2.`;if(cs.some(c=>c.t=='buff'))return 'Buff wajib di-stack dengan 1 Attack, Defense, atau Debuff.';return 'Beberapa kartu hanya bisa dimainkan bersama Buff atau Time.'};
 
@@ -43,7 +44,7 @@ function calc(w,cs,st){
  if(st.deb[w]){st.deb[w]=0;if(bf)L.push('Buff membatalkan Debuff, kartu tetap sah');else{const x=mains.shift();L.push(x?`Debuff menggagalkan ${nmc(x)}`:'Debuff terpakai')}}else if(bf)L.push('Buff tidak terpakai karena tidak ada Debuff');
  const ap=c=>{if(c.t=='atk'){const d=Math.min(c.v,st.hp[o]);st.hp[o]-=d;L.push(`${nm(w)} menghancurkan ${d} Health Card ${nm(o)}`)}else if(c.t=='def'){const g=Math.min(c.v,st.pool);st.pool-=g;st.hp[w]+=g;L.push(`${nm(w)} menambah ${g} Health Card dari cadangan`)}else{st.deb[o]=1;L.push(`${nm(w)} memasang Debuff di meja ${nm(o)}`)}};
  mains.forEach(ap);
- if(tm){const b=mains.filter(c=>c.t!='deb').sort((x,y)=>rank(y)-rank(x))[0];if(b){L.push('Time menggandakan '+nmc(b));ap(b)}else L.push('REC')}
+ if(tm)L.push('REC');
  return L;
 }
 const sc=(w,cs,B=S)=>{const o=w=='p'?'a':'p',st={hp:{...B.hp},pool:B.pool,deb:{...B.deb}},b=st.hp[o],m=st.hp[w],d0=st.deb[o],L=calc(w,cs,st),dmg=b-st.hp[o],gain=st.hp[w]-m,bf=cs.some(c=>c.t=='buff');let s=dmg*10+gain*(m<=b?9:5);if(st.deb[o]&&!d0)s+=S.hand[o].length>=3?5:3;if(dmg>=b)s+=1e3;if(B.deb[w])s+=bf?3:2.5;if(L.includes('REC'))s+=Math.min(S.disc.length,2)*2;return s-cs.reduce((a,c)=>a+rank(c)*.12,0)};
@@ -58,8 +59,8 @@ function win(){if(S.hp.p>0&&S.hp.a>0)return 0;S.over=S.hp.a<=0?'p':'a';S.busy=tr
 
 function init(pi,ai0){
  const ai=ai0??(Math.random()*6|0),g=S={h:{p:pi,a:ai},hp:{p:HD[pi][1],a:HD[ai][1]},hand:{p:[],a:[]},deck:mk(),disc:[],pool:20,deb:{p:0,a:0},turn:'p',sel:[],busy:true,over:0,zone:[],log:[],pv:{},rv:{p:[],a:[]},mode:0,df:DF,dc:0};
- const n=pi==5||ai==5?5:7;
- ['p','a'].forEach(w=>{let k=n;if(g.h[w]==1){g.hand[w].push(g.deck.splice(g.deck.findIndex(c=>c.t=='time'),1)[0]);k--}while(k-->0)pull(w)});
+ const n=pi==5||ai==5?5:7,tm=g.deck.filter(c=>c.t=='time');g.deck=g.deck.filter(c=>c.t!='time');
+ ['p','a'].forEach(w=>{let k=n;if(g.h[w]==1&&tm.length){g.hand[w].push(tm.pop());k--}while(k-->0)pull(w)});tm.forEach(c=>g.deck.splice(Math.random()*(g.deck.length+1)|0,0,c));
  [...g.hand.p,...g.hand.a].forEach(c=>c.n=1);
  if(MODE=='ai')lg('Tingkat kesulitan: '+DN[DF][0]);lg(`{p}: ${HD[pi][0]} melawan {a}: ${HD[ai][0]}. Masing-masing mendapat ${n} kartu.`);
  ['p','a'].forEach(w=>{const o=w=='p'?'a':'p',h=g.h[w];
@@ -76,7 +77,7 @@ async function play(w,cs){
  g.zone=cs.map(c=>({...c,n:0,pop:1,z:w}));
  lg(`${nm(w)} memainkan ${cs.map(nmc).join(' + ')}`,w);R();
  await wait(1300);if(S!==g)return;
- const b4={hp:{...g.hp},deb:{...g.deb}},L0=calc(w,cs,g);fxs(w,cs,b4,L0);L0.forEach(l=>{if(l=='REC'){const d=g.disc.sort((a,b)=>rank(b)-rank(a)).splice(0,2);d.forEach(c=>c.n=1);g.hand[w].push(...d);lg(`Time mengambil kembali ${d.length} kartu terbaik dari Discard Pile`,w)}else lg(l,w)});
+ const b4={hp:{...g.hp},deb:{...g.deb}},L0=calc(w,cs,g);fxs(w,cs,b4,L0);L0.forEach(l=>{if(l=='REC'){const d=g.disc.sort((a,b)=>rank(b)-rank(a)).splice(0,2);d.forEach(c=>c.n=1);g.hand[w].push(...d);lg(d.length?`Time mengambil kembali ${d.length} kartu terbaik dari Discard Pile`:'Time tidak punya kartu untuk diambil kembali (Discard Pile kosong)',w)}else lg(l,w)});
  g.disc.push(...cs);g.zone=[];
  chkEmpty();fix();R();
  if(win())return;
@@ -98,7 +99,7 @@ async function aiTurn(){
  lg('Bot mengakhiri giliran','a');g.turn='p';g.dc=0;g.busy=false;lg('Giliranmu',null);R();sfx('turn');
 }
 
-const cd=c=>{const[col,l,i]=T[c.t];return `<div class="ac ${S.sel.includes(c.id)?'sel':''} ${c.n?'deal':''} ${c.pop?'pop z'+c.z:''}" data-id="${c.id}" style="--c:${col}" title="${l}${c.v?' '+c.v*100:''}">${c.seen?'<u title="Ditandai Tactician"></u>':''}<b>${l}</b>${c.v?`<em>${c.v*100}</em>`:''}${ic(i)}<small>${c.t=='buff'?'Stack +1':c.t=='time'?'Stack +2':'Langsung'}</small></div>`};
+const cd=c=>{const[col,l,i]=T[c.t];return `<div class="ac ${S&&S.sel.includes(c.id)?'sel':''} ${c.n?'deal':''} ${c.pop?'pop z'+c.z:''}" data-id="${c.id}" style="--c:${col}" title="${l}${c.v?' '+c.v*100:''}">${c.seen?'<u title="Ditandai Tactician"></u>':''}<b>${l}</b>${c.v?`<em>${c.v*100}</em>`:''}${ic(i)}<small>${c.t=='buff'?'Stack +1':c.t=='time'?'Stack +2':'Langsung'}</small></div>`};
 const stk=w=>{const n=S.hp[w],p=S.pv[w]??n,nw=Math.max(0,n-p);return Array.from({length:n},(_,i)=>`<i class="${i>=n-nw?'new':''}"></i>`).join('')+Array.from({length:Math.max(0,p-n)},()=>'<i class="gone"></i>').join('')};
 const side=w=>{const i=S.h[w],d=HD[i];return `<div class="side"><div class="hero ${S.pv[w]>S.hp[w]?'hit':''}" style="--hu:${d[2]}"><div class="art">${SIL[i]}</div><h4>${d[0]}</h4><div class="hpn">${S.hp[w]*100}<small>HP</small></div></div><div class="stack"><div class="hs">${stk(w)}</div><span>${S.hp[w]} Health Card</span></div><div class="deb ${S.deb[w]?'on':''}">${ic('ban')}<span>${S.deb[w]?'Debuff aktif':'Tanpa Debuff'}</span></div></div>`};
 
@@ -110,7 +111,7 @@ function R(){
 <div class="sec">${side(o)}<div class="ohand">${g.hand[o].map(c=>rv.includes(c.id)?cd(c):`<div class="ac bk ${c.n?'deal':''}">${c.seen?'<u></u>':''}${ic('hour')}</div>`).join('')}<small>${g.hand[o].length} kartu tertutup</small></div></div>
 <div class="sec mid"><div class="piles"><div class="pile"><div class="ac bk">${ic('sword')}</div><span>Dek: ${g.deck.length}</span></div><div class="pile"><div class="ac dis" style="--c:${top?T[top.t][0]:'#4b5675'}">${top?`<b>${T[top.t][1]}</b>${top.v?`<em>${top.v*100}</em>`:''}`:''}</div><span>Discard: ${g.disc.length}</span></div><div class="pile"><div class="ac hpc"></div><span>Health Pool: ${g.pool}</span></div></div><div class="zone"><div class="zc">${g.zone.map(cd).join('')}</div><p id="msg">${msg}</p></div></div>
 <div class="sec">${side(V)}<div class="hand">${pc.map(cd).join('')}</div><div class="ctl"><button class="pri" data-a="play">Mainkan Kartu</button><button data-a="draw">Ambil Kartu (Shared Draw)</button><button data-a="end">Akhiri Giliran</button></div><p id="hint"></p></div>
-</div><aside class="log" id="log">${g.log.map(([x,w])=>`<p class="${w?(w==V?'p':'a'):''}">${tx(x)}</p>`).join('')}</aside></div>${g.over?`<div class="ov"><div class="box"><h2>${g.over==V?'Kamu menang!':nameOf(g.over)+' menang'}</h2><p>${g.over==V?`Tumpukan Health Card ${nameOf(o)} habis.`:'Tumpukan Health Card-mu habis.'}</p><button class="pri" data-a="again">${MODE=='ai'?'Main lagi':'Main lagi dengan teman'}</button> <button data-a="menu">Menu utama</button></div></div>`:''}`;
+</div><aside class="log" id="log">${g.log.map(([x,w])=>`<p class="${w?(w==V?'p':'a'):''}">${tx(x)}</p>`).join('')}</aside></div>${g.over?`<div class="ov"><div class="box"><h2>${g.over=='x'?'Game berakhir':g.over==V?'Kamu menang!':nameOf(g.over)+' menang'}</h2><p>${g.over=='x'?'Lawan offline lebih dari 30 menit.':g.over==V?`Tumpukan Health Card ${nameOf(o)} habis.`:'Tumpukan Health Card-mu habis.'}</p>${g.over=='x'?'':`<button class="pri" data-a="again">${MODE=='ai'?'Main lagi':'Main lagi dengan teman'}</button>`} <button data-a="menu">Menu utama</button></div></div>`:''}`;
  g.pv={...g.hp};[...g.hand.p,...g.hand.a,...g.zone].forEach(c=>{c.n=0;c.pop=0});
  const l=$('#log');l.scrollTop=l.scrollHeight;U();
 }
@@ -136,12 +137,13 @@ function act(w,m){
  if(m.k=='play'){const ids=m.ids||[],cs=ids.map(i=>S.hand[w].find(c=>c.id==i)).filter(Boolean);if(cs.length==ids.length&&val(cs))play(w,cs)}
 }
 /* Online: pesan dikirim lewat broker MQTT publik. Kode ruangan = 8 angka. */
+const LIMIT=window.DK_LIMIT||30*60*1000;
 const BROKERS=window.DK_BROKERS||['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
 const TP=k=>'dk1/'+NET.code+'/'+k;
 const pub=(k,o,rt,q=1)=>{try{if(NET.c&&NET.c.connected)NET.c.publish(TP(k),typeof o=='string'?o:JSON.stringify(o),{retain:!!rt,qos:q})}catch(e){}};
 const send=m=>{if(m.t=='s')pub('snap',m.s,1);else if(m.t=='act')pub('act',m);else if(m.t=='sfx')pub('sfx',m,0,0);else if(m.t=='re')pub('re',{from:MODE})};
 const ls={get:k=>{try{return sessionStorage.getItem(k)||localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{sessionStorage.setItem(k,v);localStorage.setItem(k,v)}catch(e){}},del:k=>{try{sessionStorage.removeItem(k);localStorage.removeItem(k)}catch(e){}}};
-function saveSess(){if(NET.code)ls.set('dk_s',JSON.stringify({role:MODE,code:NET.code,gid:NET.gid,seat:NET.seat,phase:NET.phase,hh:NET.hh,gen:NET.gen,ss:MODE=='host'?NET.ss:null}))}
+function saveSess(){if(NET.code)ls.set('dk_s',JSON.stringify({ts:Date.now(),role:MODE,code:NET.code,gid:NET.gid,seat:NET.seat,phase:NET.phase,hh:NET.hh,gen:NET.gen,ss:MODE=='host'?NET.ss:null}))}
 function netBanner(){const e=$('#nb');if(!e)return;const t=NET.down?'Koneksi terputus. Menyambung ulang...':MODE=='guest'&&NET.joined&&NET.hostOff?'Host sedang offline. Menunggu host kembali...':MODE=='host'&&NET.seat&&NET.guestOff?'Temanmu sedang offline. Game lanjut saat ia kembali.':'';e.textContent=t;e.hidden=!t}
 function netClose(){const c=NET.c;if(c){try{c.removeAllListeners();c.end(true)}catch(e){}}for(const k in NET)delete NET[k];netBanner()}
 function leave(){const c=NET.c;if(c&&c.connected){const ks=MODE=='host'?['host','snap','hostlive','guest']:MODE=='guest'?['guest','guestlive']:[];ks.forEach(k=>c.publish(TP(k),'',{retain:true,qos:1}));try{c.removeAllListeners();c.end(false)}catch(e){}NET.c=null}ls.del('dk_s');netClose()}
@@ -170,13 +172,13 @@ function onTopic(k,p){
  let m=null;try{m=p?JSON.parse(p):null}catch(e){}
  if(MODE=='guest'){
   if(k=='host'){NET.hi=m;guestLobby()}
-  else if(k=='hostlive'){NET.hostOff=p!='on';netBanner()}
+  else if(k=='hostlive'){NET.hostOff=p!='on';NET.offAt=NET.hostOff?(NET.offAt||Date.now()):0;netBanner()}
   else if(k=='snap'&&m){NET.phase='play';NET.lph='play';recv(m)}
   else if(k=='sfx'&&m)sfx(m.k,m.a,1)
   else if(k=='re'&&m&&m.from=='host')rematch(0)
  }else if(MODE=='host'){
   if(k=='guest'){NET.gi=m;hostLobby()}
-  else if(k=='guestlive'){NET.guestOff=p!='on';netBanner()}
+  else if(k=='guestlive'){NET.guestOff=p!='on';NET.offAt=NET.guestOff?(NET.offAt||Date.now()):0;netBanner()}
   else if(k=='act'&&m)act('a',m)
   else if(k=='re'&&m&&m.from=='guest')rematch(0)
  }
@@ -235,6 +237,7 @@ function joinRoom(code){
 }
 function boot(){
  let s=null;try{s=JSON.parse(ls.get('dk_s')||'null')}catch(e){}
+ if(s&&s.code&&Date.now()-(s.ts||0)>LIMIT){ls.del('dk_s');return menu('Sesi game berakhir karena lebih dari 30 menit tidak aktif.')}
  if(!s||!s.code||!window.mqtt)return menu();
  MODE=s.role;V=MODE=='host'?'p':'a';S=null;
  root.innerHTML=`<h1>Menyambungkan kembali...</h1><p class='sub'>Ruangan ${s.code}</p><div class='lob'><button class='lnk' data-a='menu'>batal dan keluar dari ruangan</button></div>`;
@@ -244,10 +247,40 @@ function boot(){
  },()=>{netClose();ls.del('dk_s');menu('Tidak bisa terhubung ke server perantara. Periksa internetmu.')});
 }
 document.addEventListener('visibilitychange',()=>{try{if(!document.hidden&&NET.c&&!NET.c.connected)NET.c.reconnect()}catch(e){}});
-function menu(msg){leave();S=null;MODE='ai';V='p';root.innerHTML=`<h1>Duel Kartu Strategi</h1><p class='sub'>Pilih mode permainan.</p>${msg?`<p class='sub' style='color:#f87171'>${msg}</p>`:''}<div class='pg'><button class='lv' data-m='ai' style='--c:#3b82f6'><h3>Player vs AI</h3><p>Lawan Bot. Kamu memilih tingkat kesulitan dulu, lalu Hero.</p></button><button class='lv' data-m='pvp' style='--c:#e23c86'><h3>Player vs Player</h3><p>Main bareng teman di dua perangkat. Buat ruangan, lalu bagikan kode 8 angkanya.</p></button></div>`}
+function expire(){
+ if(S&&!S.over){S.over='x';S.busy=true;lg('Game berakhir: lawan offline lebih dari 30 menit.');R()}
+ else if(!S){if(MODE=='host')menu('Ruangan ditutup: tidak ada aktivitas selama 30 menit.');else if(MODE=='guest')failG('Host tidak kembali dalam 30 menit.')}
+}
+setInterval(()=>{
+ if(!NET.code)return;
+ if(NET.c&&NET.c.connected)saveSess();
+ if(MODE=='host'&&NET.phase=='wait'){NET.t00=NET.t00||Date.now();if(Date.now()-NET.t00>=LIMIT)expire();return}
+ const off=(MODE=='host'&&NET.seat&&NET.guestOff)||(MODE=='guest'&&NET.joined&&NET.hostOff);
+ if(off){NET.offAt=NET.offAt||Date.now();if(Date.now()-NET.offAt>=LIMIT)expire()}else NET.offAt=0;
+},window.DK_LIMIT?500:30000);
+function menu(msg){leave();S=null;MODE='ai';V='p';root.innerHTML=`<h1>Duel Kartu Strategi</h1><p class='sub'>Pilih mode permainan.</p>${msg?`<p class='sub' style='color:#f87171'>${msg}</p>`:''}<div class='pg'><button class='lv' data-m='ai' style='--c:#3b82f6'><h3>Player vs AI</h3><p>Lawan Bot. Kamu memilih tingkat kesulitan dulu, lalu Hero.</p></button><button class='lv' data-m='pvp' style='--c:#e23c86'><h3>Player vs Player</h3><p>Main bareng teman di dua perangkat. Buat ruangan, lalu bagikan kode 8 angkanya.</p></button><button class='lv' data-m='how' style='--c:#f0b429'><h3>Cara bermain</h3><p>Aturan lengkap: persiapan, giliran, Shared Draw, serta Debuff, Buff, dan Time.</p></button><button class='lv' data-m='guide' style='--c:#14b8a6'><h3>Panduan kartu</h3><p>Daftar semua kartu beserta penjelasannya.</p></button></div>`}
 function lobby(){S=null;root.innerHTML=`<h1>Player vs Player</h1><p class='sub'>Satu orang membuat ruangan dan membagikan kode 8 angka, yang lain memasukkan kodenya.</p><div class='pg'><button class='lv' data-a='host' style='--c:#3b82f6'><h3>Buat ruangan</h3><p>Kamu mendapat kode untuk dikirim ke temanmu.</p></button><button class='lv' data-a='join' style='--c:#22c55e'><h3>Gabung ruangan</h3><p>Masukkan kode dari temanmu.</p></button></div><p class='sub'><button class='lnk' data-a='menu'>kembali ke menu</button></p>`}
+function howTo(){
+ S=null;root.innerHTML=`<div class='doc'><h1>Cara Bermain</h1><p class='sub'>Aturan dari kartu panduan, lengkap dengan cara memakainya di game ini.</p><p class='sub'><button class='lnk' data-a='menu'>kembali ke menu</button></p>
+<div class='dsec'><h3>Tujuan game</h3><p>Habiskan tumpukan Health Card lawan hingga 0 kartu untuk menang.</p></div>
+<div class='dsec'><h3>Persiapan (setup)</h3><ol><li>Pilih 1 Hero Card dan buka bersamaan.</li><li>Ambil Health Card sesuai HP Hero (1 kartu = 100 HP), taruh terbuka di meja.</li><li>Jalankan efek awal (Game Start) Hero jika ada.</li><li>Kocok dek Action Card, bagikan 7 kartu ke tiap pemain (5 kartu jika ada yang memakai The Minimalist).</li></ol></div>
+<div class='dsec'><h3>Giliran</h3><ul><li>Klik kartu di tanganmu untuk memilih, lalu tekan <b>Mainkan Kartu</b>. Attack, Defense, dan Debuff bisa dimainkan langsung.</li><li>Buff wajib di-stack dengan 1 kartu aksi lain, dan Time wajib di-stack dengan 2 kartu aksi lain. Pilih semua kartunya dulu, tombol Mainkan aktif kalau pilihannya sah.</li><li>Setelah kamu memainkan satu kartu atau satu stack, giliranmu selesai otomatis. Kamu juga bisa menekan <b>Akhiri Giliran</b> tanpa memainkan kartu.</li></ul></div>
+<div class='dsec'><h3>Shared Draw (ambil bersama)</h3><ul><li>Tidak ada ambil kartu otomatis tiap giliran.</li><li>Jika kartu di tanganmu habis (0) atau kamu memilih mengambil kartu dari dek, <b>lawan otomatis mendapat jumlah kartu yang sama</b>. Saat tanganmu kosong, kamu menarik 7 kartu sekaligus.</li><li>Ambil kartu manual maksimal 4 kali per giliran.</li><li>Batas maksimal kartu di tangan: 10 kartu. Kelebihannya wajib dibuang.</li></ul></div>
+<div class='dsec'><h3>Debuff, Buff, dan Time</h3><ul><li><b>Debuff</b> dipasang di meja lawan. Action Card utama berikutnya yang dimainkan lawan gagal satu kali.</li><li><b>Buff</b> yang di-stack membatalkan Debuff di mejamu, jadi kartu pendampingnya tetap sah.</li><li><b>Time</b> memungkinkan dua kartu aksi dimainkan sekaligus dalam satu giliran, dan mengambil kembali 2 kartu terbaik dari Discard Pile tanpa Shared Draw. Time tidak menambah damage.</li><li><b>Defense</b> mengambil Health Card dari Health Pool (cadangan 20 kartu). Kalau Health Pool habis, Defense tidak menambah apa pun.</li></ul></div>
+<div class='dsec'><h3>Mode permainan</h3><ul><li><b>Player vs AI:</b> pilih tingkat kesulitan (Easy sampai Extreme), lalu Hero-mu. Bot memilih Hero secara acak.</li><li><b>Player vs Player:</b> satu orang membuat ruangan dan membagikan kode 8 angka, temannya memasukkan kode itu. Kalau salah satu pemain offline selama 30 menit, game berakhir otomatis.</li></ul></div>
+<p class='sub'><button class='lnk' data-a='menu'>kembali ke menu</button></p></div>`}
+function guide(){
+ S=null;const n=(t,v)=>DECK.find(d=>d[0]==t&&d[1]==v)[2];
+ const A=[['atk',1,'Langsung main.','Lawan kehilangan 1 Health Card (−100 HP).'],['atk',2,'Langsung main.','Lawan kehilangan 2 Health Card (−200 HP).'],['atk',3,'Langsung main.','Lawan kehilangan 3 Health Card (−300 HP).'],['def',1,'Langsung main.','Tambah 1 Health Card ke tumpukanmu dari Health Pool (+100 HP). Kalau Health Pool habis, tidak ada tambahan.'],['def',2,'Langsung main.','Tambah 2 Health Card ke tumpukanmu dari Health Pool (+200 HP).'],['deb',0,'Langsung main.','Pasang di meja lawan. Action Card utama berikutnya yang dimainkan lawan digagalkan satu kali. Satu pemain hanya bisa terkena satu Debuff pada satu waktu.'],['buff',0,'Wajib di-stack dengan 1 kartu aksi (Attack, Defense, atau Debuff).','Menembus Debuff yang aktif di mejamu, sehingga kartu pendampingnya tetap sah. Tanpa Debuff aktif, Buff tidak berpengaruh, jadi simpan untuk saat dibutuhkan.'],['time',0,'Wajib di-stack dengan 2 kartu aksi lain (boleh termasuk 1 Buff).','Kedua kartu dimainkan sekaligus dalam satu giliran, lalu kamu mengambil kembali 2 kartu terbaik dari Discard Pile tanpa Shared Draw. Time tidak menambah damage. Kartu ini langka, dan hanya Chronomancer yang mulai dengan Time.']];
+ const rows=A.map(([t,v,r,e])=>`<div class='grow'>${cd({t,v,id:0})}<div><h4>${T[t][1]+(v?' '+v*100:'')}<i>${n(t,v)} di dek</i></h4><p><b>${r}</b> ${e}</p></div></div>`).join('');
+ const heroes=HD.map((d,i)=>`<div class='hcd st' style='--hu:${d[2]}'><div class='kind'>Hero card</div><h3>${d[0]}</h3><div class='art'>${SIL[i]}</div><div class='hpr'><div class='hpn'>${d[1]*100}<small>HP</small><em>${d[1]} Health Card</em></div><div class='mini'>${'<i></i>'.repeat(d[1])}</div></div><div class='fx'><b class='${i?'':'no'}'>${d[3]}</b><p>${d[4]}</p></div></div>`).join('');
+ root.innerHTML=`<div class='doc'><h1>Panduan Kartu</h1><p class='sub'>Semua kartu di game ini dan fungsinya.</p><p class='sub'><button class='lnk' data-a='menu'>kembali ke menu</button></p>
+<h2>Hero Card (6)</h2><p class='sub'>Tiap pemain memilih satu Hero di awal game. Hero menentukan jumlah Health Card awal dan efek Game Start yang hanya berlaku sekali. Makin kuat efeknya, makin sedikit Health Card.</p><div class='pg'>${heroes}</div>
+<h2>Health Card</h2><div class='grow'><div class='ac hpc'><em>100</em><small style='color:#ffe3a0'>HP</small></div><div><h4>Health Card<i>cadangan 20 di Health Pool</i></h4><p>Satu kartu = 100 HP. Tumpukan Health Card di mejamu adalah nyawamu: Attack mengurangi tumpukan lawan, Defense menambah tumpukanmu. Kalau tumpukanmu habis (0 kartu), kamu kalah.</p></div></div>
+<h2>Action Card (60 kartu di dek)</h2>${rows}
+<p class='sub'><button class='lnk' data-a='menu'>kembali ke menu</button></p></div>`}
 root.onclick=e=>{
- const mm=e.target.closest('[data-m]');if(mm){sfx('ui');if(mm.dataset.m=='ai'){MODE='ai';V='p';return levels()}return lobby()}
+ const mm=e.target.closest('[data-m]');if(mm){sfx('ui');const k=mm.dataset.m;if(k=='how')return howTo();if(k=='guide')return guide();if(k=='ai'){MODE='ai';V='p';return levels()}return lobby()}
  const d=e.target.closest('[data-d]');if(d){sfx('ui');DF=+d.dataset.d;return pick()}
  const h=e.target.closest('[data-h]');if(h){sfx('ui');return choose(+h.dataset.h)}
  const a=e.target.closest('[data-a]');
