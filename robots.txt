@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://GANTI-DENGAN-DOMAINMU.vercel.app/sitemap.xml
+Sitemap: https://drivedio.my.id/sitemap.xml
